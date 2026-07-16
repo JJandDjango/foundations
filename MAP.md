@@ -1,0 +1,26 @@
+# Map - foundations
+
+> **Contract** - one question: *what are the pieces, and how do they connect?*
+> <=2 pages - update on add / remove / rewire of a Component - hand-edited.
+
+## Diagram
+```mermaid
+flowchart TD
+    SPEC["standards/&lt;member&gt;/SPEC.md<br/>(canonical specs)"] -->|defines| PKG["prompt_lang/<br/>validator package"]
+    PKG --> CLI["CLI: python -m prompt_lang<br/>exit 0/1/2/3"]
+    SKILL["skills/refactor<br/>(migration skill)"] -->|invokes| CLI
+    CLI -->|dev-time dep| CONSUMER["consumer repo<br/>(CI / session)"]
+```
+<!-- The ONE diagram in this project, at ~C4 container zoom. Anything deeper
+     rots faster than you can maintain it - use the table below for detail. -->
+
+## Components
+<!-- One row per piece - one-line responsibility - link the deep doc once it exists (else "no doc yet"). -->
+
+| Component | Responsibility (one line) | Status | Deep doc |
+|---|---|---|---|
+| `standards/promptlang/SPEC.md` | canonical PromptLang spec — the form standard for prompt files | stable (v1.0) | is the doc |
+| `standards/theory/SPEC.md` | canonical Theory spec — commit nothing you could not explain (spec-only member) | stable (v1.0) | is the doc |
+| `prompt_lang/` | the PromptLang validator package (parser · validator · config · directives · CLI) | planned (Pass 1) | no doc yet |
+| `skills/refactor/` | migration + validation skill invoking the CLI (plugin-distributable) | planned (Pass 1) | no doc yet |
+| `decisions/` | append-only ADR trail (why-history) | live | — |

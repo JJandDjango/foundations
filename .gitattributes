@@ -1,0 +1,2 @@
+# Pin all text files to LF in the repo (Cairn public-prep lesson, applied from birth).
+* text=auto eol=lf
