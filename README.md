@@ -35,6 +35,23 @@ python -m prompt_lang path/to/prompts --config prompt-lang.config.yaml
 
 Exit codes: `0` pass · `1` validation errors · `2` config error · `3` path not found. Wire step 3 into CI and the standard has teeth in your repo.
 
+**Author-side teeth (machine-level):** install the plugin — `/plugin marketplace add path/to/foundations`, then install `foundations` — and every `Write`/`Edit` of a claimed prompt artifact is validated on the spot in *any* repo you work in; failures feed straight back to the agent. The hook is a silent no-op wherever the `prompt_lang` package isn't installed.
+
+**Repo-side teeth (travels with the repo, skips gracefully):** add a conformance test —
+
+```python
+import pytest
+prompt_lang = pytest.importorskip("prompt_lang", reason="foundations not installed; PromptLang conformance skipped")
+from prompt_lang.config import load_config
+from prompt_lang.validator import validate_file
+
+def test_prompts_conform():
+    result = validate_file("skills/my-skill/SKILL.md", load_config())
+    assert result.passed, [e.message for e in result.errors]
+```
+
+It runs wherever foundations is installed (your machines, CI), skips visibly everywhere else, and never blocks the repo's function — standards bind *authors*, not *users*.
+
 ## Relationship to Cairn
 
 [Cairn](https://github.com/JJandDjango/cairn) answers *"where does project knowledge live?"* (the docs spine). **foundations** answers *"what rules does our work obey, and what enforces them?"* They compose: a Cairn-scaffolded project's `CONVENTIONS.md` (Cairn 1.2) *cites* a foundations standard + ADR; the standard's validator supplies the enforcement. Content is never copied across.

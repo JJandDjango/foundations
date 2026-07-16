@@ -92,7 +92,7 @@ Default artifact classes:
 | `**/.agentic/validators/*.md` | requires `<purpose>` + `<instructions>` |
 | `**/.agentic/threads/*.md` | requires `<purpose>` + `<instructions>` |
 | `**/.claude/commands/*.md` | requires `<purpose>` + `<instructions>`; **forbids** `<directives>` |
-| `**/skills/*/SKILL.md`, `**/.claude/skills/*/SKILL.md` | requires `<purpose>` + `<instructions>` |
+| `**/skills/*/SKILL.md` | requires `<purpose>` + `<instructions>` (covers `.claude/skills/…` too — `**/` matches zero or more leading components) |
 
 Per-rule fields: `pattern`, `required_tags`, `forbidden_tags`, `skip_frontmatter`, `skip_required_tags`, `allow_reference`.
 

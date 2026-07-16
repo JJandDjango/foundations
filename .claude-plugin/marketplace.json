@@ -1,0 +1,13 @@
+{
+  "name": "foundations",
+  "owner": {
+    "name": "Johnathan Hyden"
+  },
+  "plugins": [
+    {
+      "name": "foundations",
+      "source": "./",
+      "description": "Portable engineering standards with spec + teeth — PromptLang validator skill and author-side hook."
+    }
+  ]
+}

@@ -1,0 +1,130 @@
+# Prompt Programming Language default configuration (SPEC §5).
+#
+# Overridable via `python -m prompt_lang --config <path.yaml>`.
+#
+# Pattern semantics: fnmatch against the POSIX-normalized file path
+# (PurePath.as_posix()). Matching is case-insensitive on Windows, case-
+# sensitive on Unix.
+
+validation:
+  tokens:
+    warn_at: 2000
+    fail_at: 4000
+
+  semantic_check: true
+
+  required_tags:
+    - purpose
+    - instructions
+
+  optional_tags:
+    - variables
+    - context
+    - constraints
+    - examples
+    - output
+    - criteria
+    - routing
+    - directives
+
+  ambiguous_patterns:
+    - "maybe"
+    - "might"
+    - "consider"
+    - "optionally"
+    - "try to"
+    - "possibly"
+    - "it would be good to"
+    - "you could"
+    - "perhaps"
+
+  frontmatter:
+    required:
+      - name
+      - description
+    optional:
+      - model
+      - argument-hint
+      - tools
+      - agent
+      - color
+      - reference
+
+directives:
+  keywords:
+    - DELEGATE
+    - DEFAULT
+    - CHAIN
+    - REQUIRE
+  patterns:
+    # SPEC §4: CHAIN accepts ASCII "->" alongside the Unicode arrow.
+    # SPEC §4: REQUIRE permits quoted paths containing spaces.
+    DELEGATE: "^DELEGATE @[\\w-]+ WHEN [\\w, -]+$"
+    DEFAULT: "^DEFAULT @[\\w-]+$"
+    CHAIN: "^CHAIN [\\w-]+: @[\\w-]+(\\s*(?:->|→)\\s*@[\\w-]+)+$"
+    REQUIRE: "^REQUIRE (?:\"[^\"]+\"|\\S+) ON \\w+$"
+
+instructions:
+  enforce_actions: false
+  action_keywords:
+    - ROUTE
+    - LOAD
+    - DELEGATE
+    - VERIFY
+    - EXECUTE
+    - SYNTHESIZE
+    - REPORT
+    - PARSE
+    - CHECK
+
+# SPEC §5: default file rules — the artifact classes the standard claims.
+# No CLAUDE.md-specific rule: directive-based routing is not a mandate.
+#
+# SPEC §1.3: reference: true is rule-gated via `allow_reference`.
+# Default-deny — a prompt file can only opt out of validation if it
+# matches a rule listed here with allow_reference: true.
+file_rules:
+  # Documentation: reference: true permitted.
+  - pattern: "**/README.md"
+    allow_reference: true
+  - pattern: "docs/**/*.md"
+    allow_reference: true
+
+  # Agent prompts.
+  - pattern: "**/.agentic/agents/*.md"
+    required_tags:
+      - purpose
+      - instructions
+    forbidden_tags:
+      - directives
+
+  # Validator prompts (spec-mode and impl-mode).
+  - pattern: "**/.agentic/validators/*.md"
+    required_tags:
+      - purpose
+      - instructions
+
+  # Thread prompts (dev_orchestrator, dev, research, audit; see §9/§11.15).
+  - pattern: "**/.agentic/threads/*.md"
+    required_tags:
+      - purpose
+      - instructions
+
+  # Slash commands (project-local under .claude/commands/, and user-global
+  # under ~/.claude/commands/). Same minimum surface as agents: purpose +
+  # instructions required; directives forbidden (commands are entry points,
+  # not routing rules).
+  - pattern: "**/.claude/commands/*.md"
+    required_tags:
+      - purpose
+      - instructions
+    forbidden_tags:
+      - directives
+
+  # Skill entry points (SKILL.md). `**/` matches zero or more leading
+  # components, so this covers `skills/x/SKILL.md`, `.claude/skills/x/`,
+  # and any nesting of either. Same minimum surface as agents.
+  - pattern: "**/skills/*/SKILL.md"
+    required_tags:
+      - purpose
+      - instructions

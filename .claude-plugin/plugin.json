@@ -1,0 +1,17 @@
+{
+  "name": "foundations",
+  "version": "0.1.0",
+  "description": "Portable engineering standards with spec + teeth. PromptLang first: /refactor migration skill + author-side validation hook (silent no-op where the prompt_lang package is not installed).",
+  "author": {
+    "name": "Johnathan Hyden"
+  },
+  "homepage": "https://github.com/JJandDjango/foundations",
+  "repository": "https://github.com/JJandDjango/foundations",
+  "keywords": [
+    "standards",
+    "promptlang",
+    "prompt-engineering",
+    "validation",
+    "hooks"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "description": "PromptLang author-side validation: prompt-artifact writes are validated on the spot; failures feed back to the agent. Silent no-op wherever prompt_lang is not installed.",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PLUGIN_ROOT}/hooks/validate_prompt.py\""
+          }
+        ]
+      }
+    ]
+  }
+}

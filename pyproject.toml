@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "foundations"
+# Authoritative version for the distribution AND the plugin
+# (.claude-plugin/plugin.json mirrors it; bump both together).
+version = "0.1.0"
+description = "Portable engineering standards with spec + teeth. PromptLang first: the prompt_lang validator."
+requires-python = ">=3.11"
+dependencies = [
+    "pyyaml>=6.0",
+    "tiktoken>=0.7",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+]
+
+[tool.setuptools]
+packages = ["prompt_lang"]
+
+[tool.setuptools.package-data]
+prompt_lang = ["prompt-lang.config.yaml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
