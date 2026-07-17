@@ -6,19 +6,19 @@
 
 ## Now
 <!-- What's actively being worked. -->
-- **Pass 1 (extraction) done** — `prompt_lang/` package landed (imports rewritten, `_globs.py` vendored, origin-doc references repointed to the SPEC), 4 test suites ported + self-validation + hook three-branch contract = **69 green**. Default config gained the `**/skills/*/SKILL.md` artifact class. `/refactor` skill ported + de-rotted (its own stray `</output>` and a tag-shaped placeholder were caught by self-validation — the teeth bit their author on day one). Author-side hook (`hooks/validate_prompt.py`) + plugin/marketplace manifests shipped. `pip install -e` verified.
+- **Consumer #1 is live.** The origin harness deleted its in-tree copy and consumes this repo (its `6c63afd`: imports repointed, 3594-test suite green, kernel invariant repoints here, CI/Dockerfile install the dep, fresh-venv portability test models the two-step install). The **plugin is installed at user scope** (skills + PostToolUse hook; hook activates in new sessions — regression-tested here, live-fire smoke pending). The user-global `/refactor` skill was de-rotted and PASSes via `python -m prompt_lang`.
+- Pass 1 recap: `prompt_lang/` extraction, **69 green**, SKILL.md artifact class added, self-validation caught its own author twice on day one.
 
 ## Blockers
 <!-- What's stopping progress. -->
-- None.
+- Harness CI needs the one-time `FOUNDATIONS_TOKEN` secret (fine-grained PAT, contents:read on this repo) before its next PR/main push — dissolves at the public flip.
 
 ## Next actions
 <!-- The ordered next steps. -->
-1. **Pass 2** (harness repo) — harness becomes consumer #1: delete `agentic/prompt_lang/`, repoint imports/docs/kernel, install the plugin (hook live-fire), full suite green.
-2. **Pass 3** — de-rot the user-global `/refactor` skill pointers.
-3. **Public flip** — gate to Cairn adoption (LICENSE, CONTRIBUTING, ruleset, stranger README pass).
-4. **Cairn adoption** (Cairn repo session) — repo-local config + `importorskip` conformance test + `CONVENTIONS.md` citation when Cairn 1.2 lands.
-5. Later: Theory teeth migration · codestandard member · marketplace publish.
+1. **Hook live-fire smoke** — in a fresh session, Write a malformed prompt artifact and observe the PostToolUse feedback.
+2. **Public flip** — gate to Cairn adoption (LICENSE, CONTRIBUTING, `protect-main` ruleset, stranger README pass; `.gitattributes` already in).
+3. **Cairn adoption** (Cairn repo session) — repo-local config + `importorskip` conformance test + `CONVENTIONS.md` citation when Cairn 1.2 lands; fix Cairn ROADMAP's stale "remote exists — private" line.
+4. Later: Theory teeth migration · codestandard member · marketplace publish · plugin-ignore for cache junk (`__pycache__`/egg-info snapshot into the plugin cache).
 
 ## Open questions
 <!-- Unresolved decisions that need an answer. -->
