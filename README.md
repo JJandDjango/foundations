@@ -1,5 +1,7 @@
 # foundations
 
+[![CI](https://github.com/JJandDjango/foundations/actions/workflows/ci.yml/badge.svg)](https://github.com/JJandDjango/foundations/actions/workflows/ci.yml)
+
 One home for the portable engineering standards — each with a **spec** and **teeth** — so every repo adopts them without drift.
 
 A *standard* here is not a style suggestion. Each member carries a four-part contract:
