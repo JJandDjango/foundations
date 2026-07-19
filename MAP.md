@@ -27,5 +27,7 @@ flowchart TD
 | `skills/refactor/` | migration + validation skill invoking the CLI (plugin-distributable) | stable | no doc yet |
 | `hooks/` | author-side PostToolUse hook — validates prompt-artifact writes; silent no-op without `prompt_lang` | stable | no doc yet |
 | `.claude-plugin/` | plugin + marketplace manifests (version mirrors `pyproject.toml`) | stable | no doc yet |
+| `.github/workflows/` | self-CI — the suite on ubuntu+windows × py 3.11/3.12 at every push/PR to main | stable | no doc yet |
+| `scripts/` | repo governance playbook — the versioned `protect-main` ruleset + its exact apply call | stable | no doc yet |
 | `tests/` | ported validator/parser/config/directives suites + self-validation + hook three-branch contract | stable (69 green) | no doc yet |
 | `decisions/` | append-only ADR trail (why-history) | live | no doc yet |

@@ -24,7 +24,7 @@ Membership is gated by the sorting test: remove the standard — does *how we en
 ```bash
 # 1. Install (dev-time dependency only — never a runtime import)
 pip install -e path/to/foundations        # local checkout
-#   or: pip install git+ssh://git@github.com/JJandDjango/foundations
+#   or: pip install git+https://github.com/JJandDjango/foundations
 
 # 2. (Optional) override scope per repo
 #    copy + edit prompt-lang.config.yaml, commit it at your repo root
@@ -67,4 +67,4 @@ THEORY.md · MAP.md · STATE.md · decisions/ · docs/   # Cairn spine (this rep
 
 ## Status
 
-Private, pre-1.0. Extracted from the agentic harness (see `decisions/0002`); public flip follows the Cairn playbook once dogfooding across two consumers is green.
+Public, pre-1.0, MIT ([`LICENSE`](LICENSE)). Extracted from the agentic harness (see `decisions/0002`) and dogfooded by two consumers (the origin harness and [Cairn](https://github.com/JJandDjango/cairn)) before the flip. `main` is PR-protected — see [`CONTRIBUTING.md`](CONTRIBUTING.md).
