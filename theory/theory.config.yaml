@@ -1,0 +1,18 @@
+# Packaged default Theory config. A repo customizes by dropping a
+# theory.config.yaml at its root (cwd-discovered by the hook/CLI) or passing
+# --config PATH — never by editing this file.
+mode: advisory            # advisory | gating
+scope:
+  - "**"                  # everything in scope by default; repos narrow this
+trivial_classes: [rename, formatting, typo, comment, deps, generated, bookkeeping]
+banned_phrases: [fix, fixes, needed, cleanup, update, wip, misc, changes, improvements]
+min_length: 20
+map:
+  path: "MAP.md"          # authored component source (absent file = check skipped)
+  reconcile: warn
+trivial_max_lines: 100    # 0 disables the trivial-claim size cross-check
+# judge:                  # uncomment to enable the warn-only LLM substance judge
+#   model: "<local model id>"
+#   base_url: "http://localhost:1234/v1"
+#   timeout_s: 10
+#   max_diff_chars: 6000
