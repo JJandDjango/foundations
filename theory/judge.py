@@ -53,15 +53,15 @@ class TheoryJudge:
     @classmethod
     def from_config(cls, cfg: "JudgeConfig") -> "TheoryJudge":  # type: ignore[name-defined]
         """Construct from JudgeConfig, building a LocalModelRunner internally."""
-        from theory.local_runner import LocalModelRunner
+        from theory.local_runner import CompletionOptions, LocalModelRunner
         from theory.config import JudgeConfig  # noqa: F401 (type ref only)
 
         runner = LocalModelRunner(
             base_url=cfg.base_url,
             model=cfg.model,
-            timeout_s=cfg.timeout_s,
-            temperature=0.0,
-            max_tokens=128,
+            options=CompletionOptions(
+                timeout_s=cfg.timeout_s, temperature=0.0, max_tokens=128
+            ),
         )
         return cls(runner=runner)
 
@@ -73,14 +73,11 @@ class TheoryJudge:
     ) -> JudgeVerdict:
         """Ask the local model whether the rationale explains the change.
 
-        Never retries. No is_available() preflight.
-        LocalBackendUnavailable → unavailable verdict.
-        LocalBackendProtocolError → unavailable verdict.
+        Never retries. No is_available() preflight. Every backend failure
+        (unavailable, protocol error, raw OSError from a fake runner) maps to
+        an 'unavailable' verdict.
         """
-        from theory.local_runner import (
-            LocalBackendProtocolError,
-            LocalBackendUnavailable,
-        )
+        from theory.local_runner import LocalBackendError
         from theory.checker import DiffInfo  # noqa: F401 (type ref only)
 
         files_str = (
@@ -99,31 +96,33 @@ class TheoryJudge:
             result = self._runner.complete(user_msg, system=_SYSTEM_PROMPT)
             # LocalModelRunner returns LocalCompletion; FakeRunner may return str
             response_text = result.text if hasattr(result, "text") else str(result)
-        except LocalBackendUnavailable as exc:
-            return JudgeVerdict("unavailable", str(exc))
-        except LocalBackendProtocolError as exc:
-            return JudgeVerdict("unavailable", str(exc))
-        except OSError as exc:
-            # FakeRunner may raise OSError directly (real runner maps OSError to
-            # LocalBackendUnavailable internally before raising, but FakeRunner may not)
+        except (LocalBackendError, OSError) as exc:
+            # OSError: FakeRunner may raise it directly (the real runner maps
+            # OSError to LocalBackendUnavailable internally before raising).
             return JudgeVerdict("unavailable", str(exc))
 
-        # Parse verdict from first non-empty line
-        for raw_line in response_text.splitlines():
-            first_line = raw_line.strip()
-            if not first_line:
-                continue
-            upper = first_line.upper()
-            if upper.startswith("EXPLAINS"):
-                remainder = first_line[len("EXPLAINS"):].strip()
-                reason: "str | None" = remainder[:_MAX_REASON_CHARS] if remainder else None
-                return JudgeVerdict("explains", reason)
-            elif upper.startswith("DOES_NOT_EXPLAIN"):
-                remainder = first_line[len("DOES_NOT_EXPLAIN"):].strip()
-                reason = remainder[:_MAX_REASON_CHARS] if remainder else None
-                return JudgeVerdict("does_not_explain", reason)
-            else:
-                return JudgeVerdict("unparseable", None)
+        return _parse_verdict(response_text)
 
-        # Empty response → unparseable
+
+def _parse_verdict(response_text: str) -> JudgeVerdict:
+    """Parse the model's first non-empty line into a JudgeVerdict."""
+    for raw_line in response_text.splitlines():
+        first_line = raw_line.strip()
+        if not first_line:
+            continue
+        upper = first_line.upper()
+        if upper.startswith("EXPLAINS"):
+            return JudgeVerdict("explains", _reason_after(first_line, "EXPLAINS"))
+        if upper.startswith("DOES_NOT_EXPLAIN"):
+            return JudgeVerdict(
+                "does_not_explain", _reason_after(first_line, "DOES_NOT_EXPLAIN")
+            )
         return JudgeVerdict("unparseable", None)
+    # Empty response → unparseable
+    return JudgeVerdict("unparseable", None)
+
+
+def _reason_after(line: str, keyword: str) -> "str | None":
+    """Extract the optional reason text following *keyword*, length-capped."""
+    remainder = line[len(keyword):].strip()
+    return remainder[:_MAX_REASON_CHARS] if remainder else None

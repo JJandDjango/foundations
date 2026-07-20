@@ -11,7 +11,7 @@ from typing import Any
 
 import pytest
 
-from theory.local_runner import LocalModelRunner
+from theory.local_runner import CompletionOptions, LocalModelRunner
 from theory.checker import DiffInfo
 from theory.config import JudgeConfig
 from theory.judge import JudgeVerdict, TheoryJudge, _SYSTEM_PROMPT
@@ -64,9 +64,9 @@ def _make_judge(transport: FakeTransport, cfg: "JudgeConfig | None" = None) -> T
     runner = LocalModelRunner(
         base_url=cfg.base_url,
         model=cfg.model,
-        timeout_s=cfg.timeout_s,
-        temperature=0.0,
-        max_tokens=128,
+        options=CompletionOptions(
+            timeout_s=cfg.timeout_s, temperature=0.0, max_tokens=128
+        ),
         transport=transport,
     )
     return TheoryJudge(runner=runner)
@@ -208,9 +208,9 @@ class TestTheoryJudge:
         runner = LocalModelRunner(
             base_url=cfg.base_url,
             model=cfg.model,
-            timeout_s=cfg.timeout_s,
-            temperature=0.0,
-            max_tokens=128,
+            options=CompletionOptions(
+                timeout_s=cfg.timeout_s, temperature=0.0, max_tokens=128
+            ),
             transport=transport,
         )
         judge._runner = runner

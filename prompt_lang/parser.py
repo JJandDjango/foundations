@@ -193,15 +193,10 @@ def _parse_frontmatter(
     return frontmatter, end_line
 
 
-def _extract_tags(
-    body: str,
-    body_start_line: int,
-    all_lines: list[str],
-    result: ValidationResult,
-    config: Config,
-) -> list[Tag]:
-    recognized = set(config.validation.all_tags)
-
+def _scan_tag_lines(
+    all_lines: list[str], body_start_line: int
+) -> tuple[dict[str, list[int]], dict[str, list[int]]]:
+    """Collect open/close tag occurrences as name -> [line numbers]."""
     open_tags: dict[str, list[int]] = {}
     close_tags: dict[str, list[int]] = {}
     for i, line in enumerate(all_lines[body_start_line:], start=body_start_line + 1):
@@ -209,7 +204,16 @@ def _extract_tags(
             open_tags.setdefault(match.group(1).lower(), []).append(i)
         for match in CLOSE_TAG_PATTERN.finditer(line):
             close_tags.setdefault(match.group(1).lower(), []).append(i)
+    return open_tags, close_tags
 
+
+def _report_tag_errors(
+    open_tags: dict[str, list[int]],
+    close_tags: dict[str, list[int]],
+    recognized: set[str],
+    result: ValidationResult,
+) -> None:
+    """Report unrecognized, unclosed, and extra-closing tag errors."""
     for tag_name in set(open_tags) | set(close_tags):
         if tag_name not in recognized:
             line_num = (open_tags.get(tag_name, [0]) + close_tags.get(tag_name, [0]))[0]
@@ -227,6 +231,9 @@ def _extract_tags(
             for line_num in close_lines[len(open_lines):]:
                 result.add_error(line_num, f"Extra closing tag: </{tag_name}>")
 
+
+def _build_tag_pairs(body: str, body_start_line: int) -> list[Tag]:
+    """Materialize Tag objects for every well-formed open/close pair."""
     tags: list[Tag] = []
     for match in TAG_PAIR_PATTERN.finditer(body):
         name = match.group(1).lower()
@@ -244,6 +251,63 @@ def _extract_tags(
     return tags
 
 
+def _extract_tags(
+    body: str,
+    body_start_line: int,
+    all_lines: list[str],
+    result: ValidationResult,
+    config: Config,
+) -> list[Tag]:
+    recognized = set(config.validation.all_tags)
+    open_tags, close_tags = _scan_tag_lines(all_lines, body_start_line)
+    _report_tag_errors(open_tags, close_tags, recognized, result)
+    return _build_tag_pairs(body, body_start_line)
+
+
+def _line_tag_events(line: str, recognized: set[str]) -> list[tuple[int, str, str]]:
+    """Collect recognized open/close tag events on a line, in column order."""
+    events: list[tuple[int, str, str]] = []
+    for match in OPEN_TAG_PATTERN.finditer(line):
+        name = match.group(1).lower()
+        if name in recognized:
+            events.append((match.start(), "open", name))
+    for match in CLOSE_TAG_PATTERN.finditer(line):
+        name = match.group(1).lower()
+        if name in recognized:
+            events.append((match.start(), "close", name))
+    events.sort(key=lambda ev: ev[0])
+    return events
+
+
+def _apply_nesting_event(
+    stack: list[tuple[str, int]],
+    kind: str,
+    name: str,
+    line_num: int,
+    result: ValidationResult,
+) -> None:
+    """Advance the nesting automaton one event; report nesting errors."""
+    if kind == "open":
+        if stack:
+            parent, parent_line = stack[-1]
+            result.add_error(
+                line_num,
+                f"Nested tag detected: <{name}> inside <{parent}> "
+                f"(opened at line {parent_line})",
+            )
+        stack.append((name, line_num))
+        return
+    if stack and stack[-1][0] == name:
+        stack.pop()
+    elif stack:
+        expected, _ = stack[-1]
+        result.add_error(
+            line_num,
+            f"Mismatched closing tag: expected </{expected}>, "
+            f"found </{name}>",
+        )
+
+
 def _check_nesting(
     all_lines: list[str],
     body_start_line: int,
@@ -254,37 +318,8 @@ def _check_nesting(
     stack: list[tuple[str, int]] = []
 
     for i, line in enumerate(all_lines[body_start_line:], start=body_start_line + 1):
-        events: list[tuple[int, str, str]] = []
-        for match in OPEN_TAG_PATTERN.finditer(line):
-            name = match.group(1).lower()
-            if name in recognized:
-                events.append((match.start(), "open", name))
-        for match in CLOSE_TAG_PATTERN.finditer(line):
-            name = match.group(1).lower()
-            if name in recognized:
-                events.append((match.start(), "close", name))
-
-        events.sort(key=lambda ev: ev[0])
-        for _, kind, name in events:
-            if kind == "open":
-                if stack:
-                    parent, parent_line = stack[-1]
-                    result.add_error(
-                        i,
-                        f"Nested tag detected: <{name}> inside <{parent}> "
-                        f"(opened at line {parent_line})",
-                    )
-                stack.append((name, i))
-            else:
-                if stack and stack[-1][0] == name:
-                    stack.pop()
-                elif stack:
-                    expected, _ = stack[-1]
-                    result.add_error(
-                        i,
-                        f"Mismatched closing tag: expected </{expected}>, "
-                        f"found </{name}>",
-                    )
+        for _, kind, name in _line_tag_events(line, recognized):
+            _apply_nesting_event(stack, kind, name, i, result)
 
 
 def _check_required_tags(

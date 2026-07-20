@@ -8,6 +8,7 @@ is config-gated and warn-only.  Spec: standards/theory/SPEC.md.
 """
 
 from theory.checker import (
+    Evidence,
     TheoryVerdict,
     check,
     evaluate_scope,
@@ -17,6 +18,7 @@ from theory.checker import (
 from theory.config import MapConfig, TheoryConfig, load_config
 
 __all__ = [
+    "Evidence",
     "MapConfig",
     "TheoryConfig",
     "TheoryVerdict",

@@ -35,6 +35,19 @@ class DiffInfo:
     diff_text: "str | None" = None
 
 
+@dataclass(frozen=True)
+class Evidence:
+    """Optional acquired context for check(): MAP components, diff stats, judge.
+
+    Everything here is evidence the caller (normally the CLI) gathered before
+    the check; each field independently absent degrades that step to a no-op.
+    """
+
+    map_components: "list[str] | None" = None
+    diff: "DiffInfo | None" = None
+    judge: "object | None" = None
+
+
 def parse_trailer(commit_msg: str) -> str | None:
     """Return the first Theory: trailer value, or None if absent.
 
@@ -116,6 +129,39 @@ def evaluate_scope(changed_files: list[str], scope_globs: list[str]) -> bool:
     return False
 
 
+def _parse_frontmatter(content: str) -> "dict | None":
+    """Parse a leading '---'-delimited YAML frontmatter block to a dict.
+
+    Returns None when there is no frontmatter or it is not a YAML mapping.
+    """
+    if not content.startswith("---"):
+        return None
+    end = content.find("\n---", 3)
+    if end == -1:
+        return None
+    data = yaml.safe_load(content[3:end].strip())
+    return data if isinstance(data, dict) else None
+
+
+def _component_names(components: list) -> list[str]:
+    """Extract name strings from frontmatter component entries.
+
+    - dict entry with str 'name' key  → yields the name string
+    - dict entry with missing/non-str 'name' key  → skipped silently
+    - str entry  → yields the string as-is (backward compatibility)
+    - any other type  → skipped silently
+    """
+    result: list[str] = []
+    for c in components:
+        if isinstance(c, dict):
+            name = c.get("name")
+            if isinstance(name, str):
+                result.append(name)
+        elif isinstance(c, str):
+            result.append(c)
+    return result
+
+
 def load_map_components(map_path: "str | Path") -> "list[str] | None":
     """Parse authored component names from MAP.md YAML frontmatter.
 
@@ -124,51 +170,94 @@ def load_map_components(map_path: "str | Path") -> "list[str] | None":
     (delimited by '---' lines), the frontmatter cannot be parsed, or the
     'components:' key is absent. Never raises; all failures degrade to None
     silently.
-
-    Component entry handling:
-    - dict entry with str 'name' key  → yields the name string
-    - dict entry with missing/non-str 'name' key  → skipped silently
-    - str entry  → yields the string as-is (backward compatibility)
-    - any other type  → skipped silently
     """
     try:
         path = Path(map_path)
         if not path.exists():
             return None
-        content = path.read_text(encoding="utf-8")
-        # Look for YAML frontmatter delimited by "---" lines
-        if not content.startswith("---"):
-            return None
-        end = content.find("\n---", 3)
-        if end == -1:
-            return None
-        frontmatter_text = content[3:end].strip()
-        data = yaml.safe_load(frontmatter_text)
-        if not isinstance(data, dict):
+        data = _parse_frontmatter(path.read_text(encoding="utf-8"))
+        if data is None:
             return None
         components = data.get("components")
         if not isinstance(components, list):
             return None
-        result = []
-        for c in components:
-            if isinstance(c, dict):
-                name = c.get("name")
-                if isinstance(name, str):
-                    result.append(name)
-            elif isinstance(c, str):
-                result.append(c)
-        return result
+        return _component_names(components)
     except Exception:
         return None
+
+
+def _verdict_for_trivial(
+    trailer_value: str, config: TheoryConfig, diff: "DiffInfo | None"
+) -> "TheoryVerdict | None":
+    """Step 3: resolve a 'trivial - <class>' trailer, or None if not trivial-form.
+
+    Unknown class → fail; valid class over the size cross-check → warn;
+    valid class otherwise → pass.
+    """
+    trivial_match = re.match(
+        r"^trivial\s*[-–—]\s*(.+)$", trailer_value, re.IGNORECASE
+    )
+    if not trivial_match:
+        return None
+    trivial_class = trivial_match.group(1).strip().lower()
+    if trivial_class not in [c.lower() for c in config.trivial_classes]:
+        return TheoryVerdict("fail", [f"unknown trivial class: '{trivial_class}'"])
+    _diff = diff or DiffInfo()
+    if (
+        config.trivial_max_lines > 0
+        and _diff.added_lines is not None
+        and _diff.deleted_lines is not None
+        and (_diff.added_lines + _diff.deleted_lines) > config.trivial_max_lines
+    ):
+        total = _diff.added_lines + _diff.deleted_lines
+        return TheoryVerdict(
+            "warn",
+            [
+                f"trivial - {trivial_class} claimed but the diff is "
+                f"{total} changed lines (> {config.trivial_max_lines})"
+            ],
+        )
+    return TheoryVerdict("pass", [])
+
+
+def _map_warn(trailer_value: str, map_components: "list[str] | None") -> "str | None":
+    """Step 5: MAP reconciliation — warn text when no component is named."""
+    if map_components is None:
+        return None
+    lower_value = trailer_value.lower()
+    if any(comp.lower() in lower_value for comp in map_components):
+        return None
+    return "rationale names no authored MAP component"
+
+
+def _judge_warn(
+    trailer_value: str, changed_files: list[str], evidence: Evidence
+) -> "str | None":
+    """Step 6: LLM judge — warn text for every verdict except 'explains'."""
+    judge, diff = evidence.judge, evidence.diff
+    if judge is None or diff is None or diff.diff_text is None:
+        return None
+    verdict = judge.evaluate(trailer_value, changed_files, diff)
+    if verdict.status == "does_not_explain":
+        return "judge: rationale does not explain the change" + (
+            f": {verdict.reason}" if verdict.reason else ""
+        )
+    if verdict.status == "unavailable":
+        return (
+            "judge unavailable"
+            + (f" ({verdict.reason})" if verdict.reason else "")
+            + "; deterministic bar only"
+        )
+    if verdict.status == "unparseable":
+        return "judge verdict unparseable; deterministic bar only"
+    return None  # "explains"
 
 
 def check(
     commit_msg: str,
     changed_files: list[str],
     config: TheoryConfig,
-    map_components: "list[str] | None" = None,
-    diff: "DiffInfo | None" = None,
-    judge: "object | None" = None,
+    evidence: "Evidence | None" = None,
 ) -> TheoryVerdict:
     """Full theory check.
 
@@ -177,16 +266,17 @@ def check(
        return TheoryVerdict("pass", [])           # out-of-scope: silent pass
     2. parse_trailer(commit_msg) → None →
        return TheoryVerdict("fail", ["missing Theory: trailer"])
-    3. trivial check: trailer_value matches r'^trivial\\s*[-–—]\\s*(.+)$' (case-insensitive):
-       a. extracted class (stripped, lowercased) not in config.trivial_classes →
-          return TheoryVerdict("fail", ["unknown trivial class: '<class>'"])
-       b. class is valid, size cross-check applies → possibly TheoryVerdict("warn", ...)
-       c. class is valid, no over-limit → return TheoryVerdict("pass", [])
+    3. trivial check (_verdict_for_trivial): fail / warn / pass when trivial-form
     4. evaluate_substance(trailer_value, config) → if status == "fail", return that verdict
-    5. MAP reconciliation (warn accumulation): miss appends to warns list
-    6. Judge step: appends to warns list
+    5. MAP reconciliation (_map_warn): miss appends to warns list
+    6. Judge step (_judge_warn): appends to warns list
     7. return TheoryVerdict("warn", warns) if warns else TheoryVerdict("pass", [])
+
+    Optional acquired context (MAP components, diff stats, judge) arrives as
+    *evidence*; each absent field degrades its step to a no-op.
     """
+    _evidence = evidence or Evidence()
+
     # Step 1: scope check
     if not evaluate_scope(changed_files, config.scope):
         return TheoryVerdict("pass", [])
@@ -197,65 +287,24 @@ def check(
         return TheoryVerdict("fail", ["missing Theory: trailer"])
 
     # Step 3: trivial check
-    trivial_match = re.match(
-        r"^trivial\s*[-–—]\s*(.+)$", trailer_value, re.IGNORECASE
-    )
-    if trivial_match:
-        trivial_class = trivial_match.group(1).strip().lower()
-        if trivial_class not in [c.lower() for c in config.trivial_classes]:
-            return TheoryVerdict("fail", [f"unknown trivial class: '{trivial_class}'"])
-        # Valid class: trivial size cross-check
-        _diff = diff or DiffInfo()
-        if (
-            config.trivial_max_lines > 0
-            and _diff.added_lines is not None
-            and _diff.deleted_lines is not None
-            and (_diff.added_lines + _diff.deleted_lines) > config.trivial_max_lines
-        ):
-            total = _diff.added_lines + _diff.deleted_lines
-            return TheoryVerdict(
-                "warn",
-                [
-                    f"trivial - {trivial_class} claimed but the diff is "
-                    f"{total} changed lines (> {config.trivial_max_lines})"
-                ],
-            )
-        return TheoryVerdict("pass", [])
+    trivial = _verdict_for_trivial(trailer_value, config, _evidence.diff)
+    if trivial is not None:
+        return trivial
 
     # Step 4: substance check
     substance = evaluate_substance(trailer_value, config)
     if substance.status == "fail":
         return substance
 
-    # Step 5–7: warn accumulation
-    warns: list[str] = []
-
-    # Step 5: MAP reconciliation
-    if map_components is not None:
-        lower_value = trailer_value.lower()
-        found = any(comp.lower() in lower_value for comp in map_components)
-        if not found:
-            warns.append("rationale names no authored MAP component")
-
-    # Step 6: judge evaluation
-    if judge is not None and diff is not None and diff.diff_text is not None:
-        verdict = judge.evaluate(trailer_value, changed_files, diff)
-        if verdict.status == "does_not_explain":
-            warns.append(
-                "judge: rationale does not explain the change"
-                + (f": {verdict.reason}" if verdict.reason else "")
-            )
-        elif verdict.status == "unavailable":
-            warns.append(
-                "judge unavailable"
-                + (f" ({verdict.reason})" if verdict.reason else "")
-                + "; deterministic bar only"
-            )
-        elif verdict.status == "unparseable":
-            warns.append("judge verdict unparseable; deterministic bar only")
-        # "explains" → nothing appended
+    # Steps 5–6: warn accumulation
+    warns = [
+        w
+        for w in (
+            _map_warn(trailer_value, _evidence.map_components),
+            _judge_warn(trailer_value, changed_files, _evidence),
+        )
+        if w is not None
+    ]
 
     # Step 7: return
-    if warns:
-        return TheoryVerdict("warn", warns)
-    return TheoryVerdict("pass", [])
+    return TheoryVerdict("warn", warns) if warns else TheoryVerdict("pass", [])

@@ -96,6 +96,40 @@ def main(argv: "list[str] | None" = None) -> int:
         return 0
 
 
+def _run_git(cmd: "list[str]") -> "str | None":
+    """Run a git command; return stdout on exit 0, else None.
+
+    Decodes UTF-8 with replacement: git content is UTF-8, but subprocess text
+    mode defaults to the OS locale codec (cp1252 on Windows, strict), which
+    crashes on bytes undefined there (e.g. 0x90).
+    """
+    try:
+        result = subprocess.run(
+            cmd, capture_output=True,
+            encoding="utf-8", errors="replace", check=False
+        )
+    except OSError:
+        return None
+    return result.stdout if result.returncode == 0 else None
+
+
+def _parse_numstat(stdout: str) -> "tuple[int, int]":
+    """Sum a git --numstat listing into (added, deleted); binary entries skipped."""
+    a_total, d_total = 0, 0
+    for line in stdout.splitlines():
+        parts = line.split("\t", 2)
+        if len(parts) < 2:
+            continue
+        if parts[0] == "-" or parts[1] == "-":
+            continue  # binary file entry
+        try:
+            a_total += int(parts[0])
+            d_total += int(parts[1])
+        except ValueError:
+            continue
+    return a_total, d_total
+
+
 def _acquire_diff_info(
     args: argparse.Namespace,
     config: "TheoryConfig",  # type: ignore[name-defined]
@@ -103,67 +137,64 @@ def _acquire_diff_info(
     """Acquire numstat (line counts) and optionally diff text from git."""
     from theory.checker import DiffInfo
 
-    need_numstat = config.trivial_max_lines > 0 or config.judge is not None
-    need_diff_text = config.judge is not None
-
     added: "int | None" = None
     deleted: "int | None" = None
     diff_text: "str | None" = None
 
-    has_source = getattr(args, "staged", False) or getattr(args, "commit", None)
+    staged = getattr(args, "staged", False)
+    commit = getattr(args, "commit", None)
+    if not staged and not commit:
+        return DiffInfo()
 
-    # Decode all git output as UTF-8 with replacement: git content is UTF-8, but
-    # subprocess text mode defaults to the OS locale codec (cp1252 on Windows,
-    # strict), which crashes on bytes undefined there (e.g. 0x90).
-    if need_numstat and has_source:
-        if args.staged:
+    need_numstat = config.trivial_max_lines > 0 or config.judge is not None
+    if need_numstat:
+        if staged:
             numstat_cmd = ["git", "diff", "--cached", "--numstat"]
         else:
-            numstat_cmd = ["git", "show", "--numstat", "--format=", args.commit]
-        try:
-            result = subprocess.run(
-                numstat_cmd, capture_output=True,
-                encoding="utf-8", errors="replace", check=False
-            )
-            if result.returncode == 0:
-                a_total, d_total = 0, 0
-                for line in result.stdout.splitlines():
-                    parts = line.split("\t", 2)
-                    if len(parts) < 2:
-                        continue
-                    if parts[0] == "-" or parts[1] == "-":
-                        continue  # binary file entry
-                    try:
-                        a_total += int(parts[0])
-                        d_total += int(parts[1])
-                    except ValueError:
-                        continue
-                added, deleted = a_total, d_total
-        except OSError:
-            pass  # degrade to None fields
+            numstat_cmd = ["git", "show", "--numstat", "--format=", commit]
+        stdout = _run_git(numstat_cmd)
+        if stdout is not None:
+            added, deleted = _parse_numstat(stdout)
 
-    if need_diff_text and has_source:
-        if args.staged:
+    if config.judge is not None:
+        if staged:
             diff_cmd = ["git", "diff", "--cached"]
         else:
-            diff_cmd = ["git", "show", "--format=", args.commit]
-        try:
-            result = subprocess.run(
-                diff_cmd, capture_output=True,
-                encoding="utf-8", errors="replace", check=False
-            )
-            if result.returncode == 0:
-                max_chars = config.judge.max_diff_chars  # type: ignore[union-attr]
-                diff_text = result.stdout[:max_chars]
-        except OSError:
-            pass
+            diff_cmd = ["git", "show", "--format=", commit]
+        stdout = _run_git(diff_cmd)
+        if stdout is not None:
+            diff_text = stdout[: config.judge.max_diff_chars]
 
     return DiffInfo(added_lines=added, deleted_lines=deleted, diff_text=diff_text)
 
 
+def _derive_changed_files(args: argparse.Namespace) -> list[str]:
+    """Derive the commit's changed files from --staged or --commit."""
+    if args.staged:
+        stdout = _run_git(["git", "diff", "--cached", "--name-only"])
+    elif args.commit:
+        stdout = _run_git(["git", "show", "--name-only", "--format=", args.commit])
+    else:
+        stdout = None
+    if stdout is None:
+        return []
+    return [f for f in stdout.splitlines() if f.strip()]
+
+
+def _emit_verdict(verdict: "TheoryVerdict", mode: str) -> int:  # type: ignore[name-defined]
+    """Print the verdict's reasons and return the exit code for *mode*."""
+    if verdict.status == "pass":
+        return 0
+    gating_fail = verdict.status == "fail" and mode == "gating"
+    prefix = "THEORY FAIL" if gating_fail else "THEORY ADVISORY"
+    for reason in verdict.reasons:
+        print(f"{prefix}: {reason}")
+    return 1 if gating_fail else 0
+
+
 def _cmd_check(args: argparse.Namespace) -> int:
     """Execute the 'check' sub-command."""
-    from theory.checker import check, load_map_components
+    from theory.checker import Evidence, check, load_map_components
     from theory.config import load_config
 
     config = load_config(args.config)
@@ -178,35 +209,7 @@ def _cmd_check(args: argparse.Namespace) -> int:
         print(f"error: could not read commit message file: {exc}", file=sys.stderr)
         return 1
 
-    # Derive changed files
-    changed_files: list[str] = []
-    if args.staged:
-        try:
-            result = subprocess.run(
-                ["git", "diff", "--cached", "--name-only"],
-                capture_output=True,
-                encoding="utf-8",
-                errors="replace",
-                check=False,
-            )
-            changed_files = [f for f in result.stdout.splitlines() if f.strip()]
-        except OSError:
-            pass
-    elif args.commit:
-        try:
-            result = subprocess.run(
-                ["git", "show", "--name-only", "--format=", args.commit],
-                capture_output=True,
-                encoding="utf-8",
-                errors="replace",
-                check=False,
-            )
-            changed_files = [f for f in result.stdout.splitlines() if f.strip()]
-        except OSError:
-            pass
-
-    # Acquire diff info (numstat + diff text) when needed
-    diff = _acquire_diff_info(args, config)
+    changed_files = _derive_changed_files(args)
 
     # Construct judge if configured
     judge = None
@@ -214,28 +217,15 @@ def _cmd_check(args: argparse.Namespace) -> int:
         from theory.judge import TheoryJudge
         judge = TheoryJudge.from_config(config.judge)
 
-    # Load MAP components (silent failure if absent or unreadable)
-    map_components = load_map_components(config.map.path)
+    evidence = Evidence(
+        # MAP components: silent None if absent or unreadable
+        map_components=load_map_components(config.map.path),
+        diff=_acquire_diff_info(args, config),
+        judge=judge,
+    )
 
-    # Run check
-    verdict = check(commit_msg, changed_files, config, map_components, diff=diff, judge=judge)
-
-    # Emit output
-    if verdict.status == "pass":
-        return 0
-    elif verdict.status == "warn":
-        for reason in verdict.reasons:
-            print(f"THEORY ADVISORY: {reason}")
-        return 0
-    else:  # fail
-        if config.mode == "gating":
-            for reason in verdict.reasons:
-                print(f"THEORY FAIL: {reason}")
-            return 1
-        else:
-            for reason in verdict.reasons:
-                print(f"THEORY ADVISORY: {reason}")
-            return 0
+    verdict = check(commit_msg, changed_files, config, evidence)
+    return _emit_verdict(verdict, config.mode)
 
 
 def _cmd_install_hook(args: argparse.Namespace) -> int:
