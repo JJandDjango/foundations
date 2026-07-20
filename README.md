@@ -16,8 +16,8 @@ Membership is gated by the sorting test: remove the standard — does *how we en
 | Standard | Governs | Spec | Teeth | Status |
 |---|---|---|---|---|
 | **PromptLang** | *Form* — every agent / validator / thread / command / skill prompt | `standards/promptlang/SPEC.md` | `prompt_lang/` validator (CLI: `python -m prompt_lang`) + `/refactor` skill | spec + teeth |
-| **Theory** | *Understanding* — a change is done only when its why is articulated | `standards/theory/SPEC.md` | commit-boundary check (resident in the origin harness; migration planned) | spec-only here |
-| **codestandard** | *Evaluation* — hard gates over code quality | — | — | planned member |
+| **Theory** | *Understanding* — a change is done only when its why is articulated | `standards/theory/SPEC.md` | `theory/` commit-boundary checker (CLI: `python -m theory` + installable commit-msg hook; anchor: the `Theory:` trailer) | spec + teeth |
+| **codestandard** | *Evaluation* — every unit of code explainable in one bounded breath, hard-gated | `standards/codestandard/SPEC.md` | `codestandard/` engine (CLI: `python -m codestandard`; checkers via the `[codestandard]` extra) | spec + teeth |
 
 ## Adopt a standard (3 steps)
 
@@ -34,6 +34,17 @@ python -m prompt_lang path/to/prompts --config prompt-lang.config.yaml
 ```
 
 Exit codes: `0` pass · `1` validation errors · `2` config error · `3` path not found. Wire step 3 into CI and the standard has teeth in your repo.
+
+The other two members adopt the same way:
+
+```bash
+# Theory — commit-rationale check at the commit boundary (advisory by default).
+#    Narrow the generic default scope with a theory.config.yaml at your repo root.
+python -m theory install-hook
+
+# codestandard — the code-quality gate (needs the extra: foundations[codestandard]).
+python -m codestandard src
+```
 
 **Author-side teeth (machine-level):** install the plugin — `/plugin marketplace add path/to/foundations`, then install `foundations` — and every `Write`/`Edit` of a claimed prompt artifact is validated on the spot in *any* repo you work in; failures feed straight back to the agent. The hook is a silent no-op wherever the `prompt_lang` package isn't installed.
 
@@ -61,6 +72,8 @@ It runs wherever foundations is installed (your machines, CI), skips visibly eve
 ```
 standards/<member>/SPEC.md   # canonical specs (slowest layer)
 prompt_lang/                 # PromptLang validator package (CLI: python -m prompt_lang)
+theory/                      # Theory commit checker (CLI: python -m theory; ships the git hook)
+codestandard/                # code-quality gate (CLI: python -m codestandard; house standard as package data)
 skills/refactor/             # migration/validation skill (plugin-distributable)
 THEORY.md · MAP.md · STATE.md · decisions/ · docs/   # Cairn spine (this repo dogfoods it)
 ```

@@ -27,7 +27,20 @@ jobs:
           cache-dependency-path: pyproject.toml
 
       - name: Install package
-        run: pip install -e ".[dev]"
+        run: pip install -e ".[dev,codestandard]"
 
       - name: Run tests
         run: pytest --tb=short
+
+      # codestandard self-application (spec: standards/codestandard/SPEC.md §6):
+      # the gate runs on this repo's own code, gating, zero baseline.
+      - name: codestandard gate — prompt_lang
+        run: python -m codestandard prompt_lang
+      - name: codestandard gate — theory
+        run: python -m codestandard theory
+      - name: codestandard gate — codestandard
+        run: python -m codestandard codestandard
+      - name: codestandard gate — hooks
+        run: python -m codestandard hooks
+      - name: codestandard gate — tests
+        run: python -m codestandard tests
