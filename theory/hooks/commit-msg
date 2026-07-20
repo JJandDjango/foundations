@@ -1,0 +1,2 @@
+#!/usr/bin/env sh
+python -m theory check --commit-msg-file "$1" --staged

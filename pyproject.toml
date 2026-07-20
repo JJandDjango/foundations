@@ -6,8 +6,8 @@ build-backend = "setuptools.build_meta"
 name = "foundations"
 # Authoritative version for the distribution AND the plugin
 # (.claude-plugin/plugin.json mirrors it; bump both together).
-version = "0.1.0"
-description = "Portable engineering standards with spec + teeth. PromptLang first: the prompt_lang validator."
+version = "0.2.0"
+description = "Portable engineering standards with spec + teeth: the prompt_lang validator, the theory commit checker, the codestandard engine."
 requires-python = ">=3.11"
 dependencies = [
     "pyyaml>=6.0",
@@ -18,13 +18,26 @@ dependencies = [
 dev = [
     "pytest>=7.4",
 ]
+# Vendored OSS checkers for the codestandard engine — offline, version-pinned
+# (spec: standards/codestandard/SPEC.md §4). Optional so prompt_lang/theory
+# consumers don't carry them.
+codestandard = [
+    "ruff==0.15.17",
+    "flake8==7.3.0",
+    "flake8-cognitive-complexity==0.1.0",
+]
 
 [tool.setuptools]
-packages = ["prompt_lang"]
+packages = ["prompt_lang", "theory", "codestandard", "codestandard.checks"]
 
 [tool.setuptools.package-data]
 prompt_lang = ["prompt-lang.config.yaml"]
+theory = ["theory.config.yaml", "hooks/commit-msg"]
+codestandard = ["code_standard.yaml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+markers = [
+    "slow: integration tests that spawn subprocesses",
+]

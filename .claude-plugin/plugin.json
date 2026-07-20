@@ -1,6 +1,6 @@
 {
   "name": "foundations",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Portable engineering standards with spec + teeth. PromptLang first: /refactor migration skill + author-side validation hook (silent no-op where the prompt_lang package is not installed).",
   "author": {
     "name": "Johnathan Hyden"

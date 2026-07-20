@@ -1,0 +1,29 @@
+# codestandard/code_standard.yaml — the house standard (layer 1). v0.0.1
+# Packaged read-only default (spec: standards/codestandard/SPEC.md).
+# Per project: pass --standard <path> with your own file (extends these numbers;
+# never past a rule's hard_max).
+# `TBD` tool-codes are declared-but-not-yet-enforced; the engine skips them with a note.
+version: 0.0.1
+root_principle: >
+  Every unit of code must be explainable, on its own, in one bounded breath;
+  a codebase is that bound applied recursively.
+
+rules:
+  # ── Tier 1 · certifying ──────────────────────────────────────────────────
+  cognitive_complexity:
+    tier: 1
+    max: 15            # ratified · strict tighten -> 10
+    hard_max: 20       # a project may relax up to here, never past
+    measure:
+      python:     { tool: flake8-cognitive-complexity }
+      javascript: { tool: eslint, rule: sonarjs/cognitive-complexity }
+  cyclomatic_complexity: { tier: 1, max: 10, measure: { python: {tool: ruff, code: C901}, javascript: {tool: eslint, rule: complexity} } }
+  nesting_depth:         { tier: 1, max: 4, strict: 3, measure: { python: {tool: ruff, code: TBD}, javascript: {tool: eslint, rule: max-depth} } }
+  params:                { tier: 1, max: 5, strict: 4, measure: { python: {tool: ruff, code: PLR0913}, javascript: {tool: eslint, rule: max-params} } }
+  returns:               { tier: 1, max: 6, measure: { python: {tool: ruff, code: PLR0911}, javascript: {tool: eslint, rule: TBD} } }
+  function_length:       { tier: 1, max: 50, measure: { python: {tool: ruff, code: PLR0915}, javascript: {tool: eslint, rule: max-lines-per-function} } }
+  file_length:           { tier: 1, max: 750, measure: { any: {tool: line-count} } }
+
+  # ── Tier 2 · tripwire ────────────────────────────────────────────────────
+  one_responsibility: { tier: 2, coverage: tripwire, gate: "cohesion + complexity-as-symptom + banned 'and'-names" }
+  names_carry_intent: { tier: 2, coverage: tripwire, gate: "min-length + abbrev allowlist + banned vague names" }
