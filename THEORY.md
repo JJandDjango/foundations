@@ -12,7 +12,7 @@ One home for the portable engineering standards - each with a spec and teeth - s
 - **The sorting test governs membership:** remove the standard — does *how we engineer* survive intact? If yes, it is not a Foundation and does not live here.
 - **Enforcement is deterministic and offline.** Validators run zero-LLM, zero-network; any consumer can run them in any CI.
 - **Source of truth lives here; consumers adopt by dependency + per-repo config override, never by copy.** Copies are how drift starts — the extraction that created this repo was triggered by exactly that rot.
-- **Dev-time tooling only, and honest about its deps** (PyYAML + tiktoken today). Never a runtime import of any consumer's software.
+- **Dev-time tooling only, and honest about its deps** (PyYAML + tiktoken; the optional `[codestandard]` extra adds the pinned OSS checkers). Never a runtime import of any consumer's software.
 - **Public-ready from birth:** package code, tests, and specs carry no knowledge of any particular consumer. Decision history (ADRs, STATE) may name consumers — that is provenance, not coupling.
 
 ## Success criteria

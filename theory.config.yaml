@@ -1,0 +1,28 @@
+# Repo-local Theory config (self-application) — narrows the packaged default.
+# Discovered by the commit-msg hook / CLI at cwd; spec: standards/theory/SPEC.md.
+mode: advisory            # advisory | gating
+scope:
+  - "prompt_lang/**"
+  - "theory/**"
+  - "codestandard/**"
+  - "hooks/**"
+  - "skills/**"
+  - "standards/**"
+  - "tests/**"
+  - "scripts/**"
+  - ".github/**"
+  - "docs/**"
+  - "decisions/**"
+  - "THEORY.md"
+  - "MAP.md"
+  - "DOCS-SYSTEM.md"
+  - "README.md"
+  - "pyproject.toml"
+# STATE.md stays out of scope: a disposable session snapshot, not authored design.
+trivial_classes: [rename, formatting, typo, comment, deps, generated, bookkeeping]
+banned_phrases: [fix, fixes, needed, cleanup, update, wip, misc, changes, improvements]
+min_length: 20
+map:
+  path: "MAP.md"
+  reconcile: warn
+trivial_max_lines: 100    # 0 disables the trivial-claim size cross-check
