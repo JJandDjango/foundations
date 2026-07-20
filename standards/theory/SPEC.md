@@ -4,7 +4,7 @@ description: Canonical specification of the Theory standard — commit nothing y
 reference: true
 ---
 
-# Theory — Specification (v1.0, spec-only member)
+# Theory — Specification (v1.1)
 
 **Governs:** *understanding*. A change is **done** only when its *why* is articulated and reconciles with the project's authored intent. Passing tests is necessary, not sufficient — generation is cheap; theory is scarce.
 
@@ -33,16 +33,17 @@ The bar makes *"do I still understand this?"* a forced question at every commit,
 - It **reconciles with authored intent**: where the repo carries an authored why-stratum (e.g. a Cairn `THEORY.md` + ADRs), the rationale must not contradict it — and if it *changes* intent, that stratum must change in the same body of work.
 - It is **proportional**: a trivial claim ("typo", "rename") must actually match a trivial diff.
 - It is **owned and terse**: a reviewer wants to see the contributor thinking; generated bulk is the thing this standard exists to prevent.
+- Its **deterministic anchor is the `Theory:` git trailer** — the distilled why in one bounded breath, machine-parseable (`git log --format='%(trailers:key=Theory)'` is the ledger). The body may elaborate; the trailer is what the forcing function keys on.
 
 ## 4. The four-part contract (member status)
 
 | Part | This member |
 |---|---|
 | Spec | this document |
-| Forcing function | commit-boundary rationale check: deterministic trivial-claim × diff-size cross-check, plus an optional local-LLM substance judge (warn-only, config-gated). **Resident in the origin harness today; migration here is planned — until then this member is spec-only.** |
-| Scope | per repo: what the rationale reconciles against — the repo's authored why-stratum when present, else "is there a rationale at all?" |
+| Forcing function | the `theory` package (this repo): CLI `python -m theory check` + installable commit-msg hook (`install-hook`). Deterministic trailer / scope / trivial-claim × diff-size checks; optional local-LLM substance judge (warn-only, config-gated, absent from defaults). Ships advisory; a repo tightens to gating via config. |
+| Scope | per repo via cwd-discovered `theory.config.yaml` (packaged default: everything in scope, advisory): scope globs, trivial classes, banned phrases, mode, the `map:` reconciliation target — the repo's authored why-stratum when present, else "is there a rationale at all?" |
 | Standing invariant | one line in the consumer's always-loaded kernel: *commit nothing you could not explain.* |
 
 ## 5. Versioning
 
-Spec v1.0, distilled from the origin harness's `THEORY.md` / `FOUNDATIONS.md` at extraction. Changes require an ADR in this repo's `decisions/`.
+Spec v1.1 — teeth resident as of [decisions/0003](../../decisions/0003-adopt-theory-teeth-and-codestandard-member.md); v1.0 was the spec-only extraction snapshot (distilled from the origin harness's `THEORY.md` / `FOUNDATIONS.md`). Changes require an ADR in this repo's `decisions/`.
