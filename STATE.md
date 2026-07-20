@@ -5,34 +5,33 @@
 > _Generated 2026-07-19._
 
 ## Now
-- **Public flip executed** (orchestrator session #178): LICENSE (MIT) +
-  CONTRIBUTING + `scripts/` protection playbook (ruleset JSON + apply call)
-  + self-CI (`.github/workflows/ci.yml`, ubuntu+windows x py 3.11/3.12) +
-  README stranger pass (ssh->https install, public Status). Repo flipped
-  public and the `protect-main` ruleset applied immediately after this
-  commit's push — from then on, main takes PRs only (`bypass_actors: []`
-  binds the owner too). Anonymous `pip install git+https://` proven from a
-  clean venv.
-- **Consumer CI live**: Cairn's `tests/test_promptlang.py` importorskip gate
-  now runs enforced in Cairn's CI (installs this repo anonymously) — the
-  adoption chain from decisions/0002 is closed end to end.
-- Consumer #1 (origin harness) consumes via local `pip install -e` + the
-  user-scope plugin; the FOUNDATIONS_TOKEN blocker dissolved (the harness
-  dropped its CI dependency at the old-loop retirement, and the repo is
-  public now regardless).
+- **Second and third members LANDED** (orchestrator session #179; ADR 0003,
+  PR #2 rebase-merged to `7e4473e`, CI green on all 4 legs): `theory/`
+  (commit-boundary checker, CLI + installable hook, `map:` reconcile,
+  warn-only judge) and `codestandard/` (evaluative engine, house standard
+  as package data, checkers via the `[codestandard]` extra). v0.2.0.
+- **Fix-then-gate executed**: the inherited 18-finding backlog (incl.
+  prompt_lang's parser pair) refactored to zero, no exceptions; CI now runs
+  gating `python -m codestandard` over every package (self-application).
+- **Self-application both ways**: this repo carries its own
+  `theory.config.yaml` + installed commit-msg hook (advisory; live-probed
+  both branches). Suite: 438 green.
+- The #178 Actions wedge cleared service-side — PR #2's checks ran
+  normally; PR #1 (badge + dispatch) can now be revisited.
+- Origin harness cut over same-day: deleted its `agentic/` + repointed its
+  hook (its decisions/0010); it and this repo both consume from here.
 
 ## Blockers
 - None.
 
 ## Next actions
-1. **Hook live-fire smoke** — in a fresh session, Write a malformed prompt
-   artifact and observe the PostToolUse feedback.
-2. **Theory teeth migration** from the origin harness (its forward #2);
-   codestandard member follows.
-3. **Marketplace publish** + plugin-ignore for cache junk
+1. **Close PR #1** (badge + dispatch trigger) — the wedge that held it is
+   gone; re-check its diff still applies, then merge.
+2. **Marketplace publish** + plugin-ignore for cache junk
    (`__pycache__`/egg-info snapshot into the plugin cache).
-4. Optional: add `required_status_checks` (the new CI) to protect-main once
-   a run history exists.
+3. Add `required_status_checks` (the CI) to protect-main — a run history
+   exists now.
+4. Optional: third consumer (Cairn) adopts the theory hook.
 
 ## Open questions
 - None.
