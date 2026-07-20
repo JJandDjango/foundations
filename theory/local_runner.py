@@ -45,6 +45,17 @@ class LocalCompletion:
     cost_usd: float = 0.0  # always 0.0; local inference has no API cost
 
 
+# ── Options ───────────────────────────────────────────────────────────────────
+
+@dataclass(frozen=True)
+class CompletionOptions:
+    """Request options for a completion call."""
+
+    timeout_s: float = 30.0
+    temperature: float = 0.0
+    max_tokens: int = 512
+
+
 # ── Default transport ─────────────────────────────────────────────────────────
 
 def _urllib_transport(
@@ -80,9 +91,7 @@ class LocalModelRunner:
         *,
         base_url: str,
         model: str,
-        timeout_s: float = 30.0,
-        temperature: float = 0.0,
-        max_tokens: int = 512,
+        options: CompletionOptions | None = None,
         transport: Transport | None = None,
     ) -> None:
         """Initialise the runner.
@@ -90,17 +99,13 @@ class LocalModelRunner:
         Args:
             base_url: Base URL of the local backend; trailing '/' is stripped.
             model: Model identifier string passed to the backend.
-            timeout_s: Request timeout in seconds.
-            temperature: Sampling temperature.
-            max_tokens: Maximum tokens to generate.
+            options: Request options (timeout, sampling). None uses defaults.
             transport: Optional injected transport callable. None uses the
                 default urllib-based transport (never called in tests).
         """
         self._base_url = base_url.rstrip("/")
         self._model = model
-        self._timeout_s = timeout_s
-        self._temperature = temperature
-        self._max_tokens = max_tokens
+        self._options = options if options is not None else CompletionOptions()
         self._transport: Transport = transport if transport is not None else _urllib_transport
 
     def complete(self, prompt: str, *, system: str | None = None) -> LocalCompletion:
@@ -129,8 +134,8 @@ class LocalModelRunner:
         payload = {
             "model": self._model,
             "messages": messages,
-            "temperature": self._temperature,
-            "max_tokens": self._max_tokens,
+            "temperature": self._options.temperature,
+            "max_tokens": self._options.max_tokens,
             "stream": False,
         }
         body_bytes = json.dumps(payload).encode("utf-8")
@@ -138,7 +143,7 @@ class LocalModelRunner:
         url = f"{self._base_url}/chat/completions"
 
         try:
-            status, resp_body = self._transport(url, body_bytes, headers, self._timeout_s)
+            status, resp_body = self._transport(url, body_bytes, headers, self._options.timeout_s)
         except OSError as exc:
             raise LocalBackendUnavailable(str(exc)) from exc
 
@@ -180,7 +185,7 @@ class LocalModelRunner:
         """
         url = f"{self._base_url}/models"
         try:
-            status, resp_body = self._transport(url, None, {}, self._timeout_s)
+            status, resp_body = self._transport(url, None, {}, self._options.timeout_s)
         except OSError:
             return False
 
@@ -245,8 +250,9 @@ def _main() -> None:
     runner = LocalModelRunner(
         base_url=args.base_url,
         model=args.model,
-        timeout_s=args.timeout_s,
-        max_tokens=args.max_tokens,
+        options=CompletionOptions(
+            timeout_s=args.timeout_s, max_tokens=args.max_tokens
+        ),
     )
 
     try:

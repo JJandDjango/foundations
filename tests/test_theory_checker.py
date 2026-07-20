@@ -12,6 +12,7 @@ from __future__ import annotations
 import pytest
 
 from theory.checker import (
+    Evidence,
     DiffInfo,
     TheoryVerdict,
     check,
@@ -231,7 +232,9 @@ class TestCheckEndToEnd:
             "Theory: explains the design tradeoff in the walker state machine",
             ["src/foo.py"],
             TheoryConfig(),
-            map_components=["Walker", "Harness"],
+            evidence=Evidence(
+                map_components=["Walker", "Harness"],
+            ),
         )
         assert verdict.status == "pass"
         assert verdict.reasons == []
@@ -242,7 +245,9 @@ class TestCheckEndToEnd:
             "Theory: explains the design tradeoff in the state machine",
             ["src/foo.py"],
             TheoryConfig(),
-            map_components=["Walker", "Harness"],
+            evidence=Evidence(
+                map_components=["Walker", "Harness"],
+            ),
         )
         assert verdict.status == "warn"
 
@@ -252,7 +257,9 @@ class TestCheckEndToEnd:
             "Theory: explains the design tradeoff in the state machine",
             ["src/foo.py"],
             TheoryConfig(),
-            map_components=None,
+            evidence=Evidence(
+                map_components=None,
+            ),
         )
         assert verdict.status == "pass"
 
@@ -424,7 +431,9 @@ class TestTrivialityCheck:
             "Theory: trivial - rename",
             _IN_SCOPE,
             config,
-            diff=DiffInfo(added_lines=60, deleted_lines=60),
+            evidence=Evidence(
+                diff=DiffInfo(added_lines=60, deleted_lines=60),
+            ),
         )
         assert verdict.status == "warn"
         assert len(verdict.reasons) == 1
@@ -440,7 +449,9 @@ class TestTrivialityCheck:
             "Theory: trivial - rename",
             _IN_SCOPE,
             config,
-            diff=DiffInfo(added_lines=40, deleted_lines=40),
+            evidence=Evidence(
+                diff=DiffInfo(added_lines=40, deleted_lines=40),
+            ),
         )
         assert verdict.status == "pass"
         assert verdict.reasons == []
@@ -452,7 +463,9 @@ class TestTrivialityCheck:
             "Theory: trivial - rename",
             _IN_SCOPE,
             config,
-            diff=DiffInfo(added_lines=500, deleted_lines=500),
+            evidence=Evidence(
+                diff=DiffInfo(added_lines=500, deleted_lines=500),
+            ),
         )
         assert verdict.status == "pass"
         assert verdict.reasons == []
@@ -464,7 +477,9 @@ class TestTrivialityCheck:
             "Theory: trivial - rename",
             _IN_SCOPE,
             config,
-            diff=DiffInfo(),  # all None
+            evidence=Evidence(
+                diff=DiffInfo(),  # all None
+            ),
         )
         assert verdict.status == "pass"
         assert verdict.reasons == []
@@ -486,7 +501,9 @@ class TestTrivialityCheck:
             "Theory: trivial - rename",
             _IN_SCOPE,
             config,
-            diff=DiffInfo(added_lines=50, deleted_lines=50),
+            evidence=Evidence(
+                diff=DiffInfo(added_lines=50, deleted_lines=50),
+            ),
         )
         assert verdict.status == "pass"
 
@@ -526,9 +543,11 @@ class TestWarnAccumulation:
             _VALID_MSG,
             _IN_SCOPE,
             TheoryConfig(),
-            map_components=["Harness"],  # "harness" not in _VALID_MSG -> MAP miss
-            judge=judge,
-            diff=DiffInfo(diff_text="some diff"),
+            evidence=Evidence(
+                map_components=["Harness"],  # "harness" not in _VALID_MSG -> MAP miss
+                judge=judge,
+                diff=DiffInfo(diff_text="some diff"),
+            ),
         )
         assert verdict.status == "warn"
         assert len(verdict.reasons) == 2
@@ -539,8 +558,10 @@ class TestWarnAccumulation:
             _VALID_MSG,
             _IN_SCOPE,
             TheoryConfig(),
-            map_components=["Harness"],  # "harness" not in _VALID_MSG -> MAP miss
-            judge=None,
+            evidence=Evidence(
+                map_components=["Harness"],  # "harness" not in _VALID_MSG -> MAP miss
+                judge=None,
+            ),
         )
         assert verdict.status == "warn"
         assert len(verdict.reasons) == 1
@@ -552,8 +573,10 @@ class TestWarnAccumulation:
             _VALID_MSG,
             _IN_SCOPE,
             TheoryConfig(),
-            judge=judge,
-            diff=DiffInfo(diff_text="some diff"),
+            evidence=Evidence(
+                judge=judge,
+                diff=DiffInfo(diff_text="some diff"),
+            ),
         )
         assert verdict.status == "warn"
         assert any("unavailable" in r for r in verdict.reasons)
@@ -565,8 +588,10 @@ class TestWarnAccumulation:
             _VALID_MSG,
             _IN_SCOPE,
             TheoryConfig(),
-            judge=judge,
-            diff=DiffInfo(diff_text="some diff"),
+            evidence=Evidence(
+                judge=judge,
+                diff=DiffInfo(diff_text="some diff"),
+            ),
         )
         assert verdict.status == "warn"
         assert any("unparseable" in r for r in verdict.reasons)
@@ -578,9 +603,11 @@ class TestWarnAccumulation:
             "Theory: extends harness state machine to support parallel spawns",
             _IN_SCOPE,
             TheoryConfig(),
-            map_components=["Harness"],
-            judge=judge,
-            diff=DiffInfo(diff_text="some diff"),
+            evidence=Evidence(
+                map_components=["Harness"],
+                judge=judge,
+                diff=DiffInfo(diff_text="some diff"),
+            ),
         )
         assert verdict.status == "pass"
 
@@ -591,8 +618,10 @@ class TestWarnAccumulation:
             _VALID_MSG,
             _IN_SCOPE,
             TheoryConfig(),
-            judge=judge,
-            diff=DiffInfo(diff_text=None),
+            evidence=Evidence(
+                judge=judge,
+                diff=DiffInfo(diff_text=None),
+            ),
         )
         assert verdict.status == "pass"
         assert judge.call_count == 0
@@ -604,8 +633,10 @@ class TestWarnAccumulation:
             _VALID_MSG,
             _IN_SCOPE,
             TheoryConfig(),
-            judge=judge,
-            diff=None,
+            evidence=Evidence(
+                judge=judge,
+                diff=None,
+            ),
         )
         assert verdict.status == "pass"
         assert judge.call_count == 0
@@ -626,8 +657,10 @@ class TestJudgeSkipConditions:
             "Theory: fix",  # banned phrase -> FAIL
             _IN_SCOPE,
             TheoryConfig(),
-            judge=judge,
-            diff=DiffInfo(diff_text="some diff"),
+            evidence=Evidence(
+                judge=judge,
+                diff=DiffInfo(diff_text="some diff"),
+            ),
         )
         assert verdict.status == "fail"
         assert judge.call_count == 0
@@ -639,8 +672,10 @@ class TestJudgeSkipConditions:
             "Theory: trivial - rename",
             _IN_SCOPE,
             TheoryConfig(),
-            judge=judge,
-            diff=DiffInfo(added_lines=10, deleted_lines=10, diff_text="some diff"),
+            evidence=Evidence(
+                judge=judge,
+                diff=DiffInfo(added_lines=10, deleted_lines=10, diff_text="some diff"),
+            ),
         )
         assert verdict.status == "pass"
         assert judge.call_count == 0

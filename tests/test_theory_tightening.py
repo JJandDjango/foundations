@@ -94,6 +94,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from theory.checker import Evidence
+
 # ---------------------------------------------------------------------------
 # Helpers / constants
 # ---------------------------------------------------------------------------
@@ -609,7 +611,9 @@ class TestTrivialityCheck:
             "Theory: trivial - rename",
             ["src/f.py"],
             config_100,
-            diff=DiffInfo(added_lines=60, deleted_lines=60),
+            evidence=Evidence(
+                diff=DiffInfo(added_lines=60, deleted_lines=60),
+            ),
         )
         assert verdict.status == "warn", (
             f"Expected warn for oversized trivial diff; got {verdict.status!r}"
@@ -628,7 +632,9 @@ class TestTrivialityCheck:
             "Theory: trivial - rename",
             ["src/f.py"],
             config_100,
-            diff=DiffInfo(added_lines=40, deleted_lines=40),
+            evidence=Evidence(
+                diff=DiffInfo(added_lines=40, deleted_lines=40),
+            ),
         )
         assert verdict.status == "pass", (
             f"Expected pass for under-limit trivial diff; got {verdict.status!r}"
@@ -643,7 +649,9 @@ class TestTrivialityCheck:
             "Theory: trivial - rename",
             ["src/f.py"],
             config_0,
-            diff=DiffInfo(added_lines=500, deleted_lines=500),
+            evidence=Evidence(
+                diff=DiffInfo(added_lines=500, deleted_lines=500),
+            ),
         )
         assert verdict.status == "pass", (
             f"Expected pass when trivial_max_lines=0; got {verdict.status!r}"
@@ -658,7 +666,9 @@ class TestTrivialityCheck:
             "Theory: trivial - rename",
             ["src/f.py"],
             config_100,
-            diff=DiffInfo(),
+            evidence=Evidence(
+                diff=DiffInfo(),
+            ),
         )
         assert verdict.status == "pass", (
             f"Expected pass when counts are None; got {verdict.status!r}"
@@ -673,7 +683,9 @@ class TestTrivialityCheck:
             "Theory: trivial - rename",
             ["src/f.py"],
             config_100,
-            diff=DiffInfo(added_lines=50, deleted_lines=50),
+            evidence=Evidence(
+                diff=DiffInfo(added_lines=50, deleted_lines=50),
+            ),
         )
         assert verdict.status == "pass"
 
@@ -711,9 +723,11 @@ class TestWarnAccumulation:
             valid_msg,
             ["src/f.py"],
             config,
-            map_components=["Walker"],
-            judge=fake_judge,
-            diff=DiffInfo(diff_text="diff content"),
+            evidence=Evidence(
+                map_components=["Walker"],
+                judge=fake_judge,
+                diff=DiffInfo(diff_text="diff content"),
+            ),
         )
         assert verdict.status == "warn", (
             f"Expected warn; got {verdict.status!r}"
@@ -731,8 +745,10 @@ class TestWarnAccumulation:
             valid_msg,
             ["src/f.py"],
             config,
-            map_components=["Walker"],
-            judge=None,
+            evidence=Evidence(
+                map_components=["Walker"],
+                judge=None,
+            ),
         )
         assert verdict.status == "warn", f"Expected warn; got {verdict.status!r}"
         assert len(verdict.reasons) == 1, (
@@ -749,8 +765,10 @@ class TestWarnAccumulation:
             valid_msg,
             ["src/f.py"],
             config,
-            judge=fake_judge,
-            diff=DiffInfo(diff_text="d"),
+            evidence=Evidence(
+                judge=fake_judge,
+                diff=DiffInfo(diff_text="d"),
+            ),
         )
         assert any("unavailable" in r.lower() for r in verdict.reasons), (
             f"'unavailable' not in reasons: {verdict.reasons}"
@@ -766,8 +784,10 @@ class TestWarnAccumulation:
             valid_msg,
             ["src/f.py"],
             config,
-            judge=fake_judge,
-            diff=DiffInfo(diff_text="d"),
+            evidence=Evidence(
+                judge=fake_judge,
+                diff=DiffInfo(diff_text="d"),
+            ),
         )
         assert any("unparseable" in r.lower() for r in verdict.reasons), (
             f"'unparseable' not in reasons: {verdict.reasons}"
@@ -793,9 +813,11 @@ class TestWarnAccumulation:
             map_msg,
             ["src/f.py"],
             config,
-            map_components=["Harness"],
-            judge=fake_judge,
-            diff=DiffInfo(diff_text="d"),
+            evidence=Evidence(
+                map_components=["Harness"],
+                judge=fake_judge,
+                diff=DiffInfo(diff_text="d"),
+            ),
         )
         assert verdict.status == "pass", (
             f"Expected pass when MAP matches and judge agrees; got {verdict.status!r} "
@@ -812,8 +834,10 @@ class TestWarnAccumulation:
             valid_msg,
             ["src/f.py"],
             config,
-            judge=fake_judge,
-            diff=DiffInfo(diff_text=None),
+            evidence=Evidence(
+                judge=fake_judge,
+                diff=DiffInfo(diff_text=None),
+            ),
         )
         assert fake_judge.call_count == 0, (
             f"Judge must not be called when diff_text=None; called {fake_judge.call_count} times"
@@ -831,8 +855,10 @@ class TestWarnAccumulation:
             valid_msg,
             ["src/f.py"],
             config,
-            judge=fake_judge,
-            diff=None,
+            evidence=Evidence(
+                judge=fake_judge,
+                diff=None,
+            ),
         )
         assert fake_judge.call_count == 0, (
             f"Judge must not be called when diff=None; called {fake_judge.call_count} times"
@@ -862,8 +888,10 @@ class TestJudgeSkipConditions:
             "Theory: fix",   # banned phrase → substance fail
             ["src/f.py"],
             TheoryConfig(),
-            judge=fake_judge,
-            diff=DiffInfo(diff_text="diff"),
+            evidence=Evidence(
+                judge=fake_judge,
+                diff=DiffInfo(diff_text="diff"),
+            ),
         )
         assert verdict.status == "fail", (
             f"Expected fail for banned phrase; got {verdict.status!r}"
@@ -883,8 +911,10 @@ class TestJudgeSkipConditions:
             "Theory: trivial - rename",
             ["src/f.py"],
             TheoryConfig(trivial_max_lines=100),
-            judge=fake_judge,
-            diff=DiffInfo(added_lines=10, deleted_lines=5, diff_text="diff"),
+            evidence=Evidence(
+                judge=fake_judge,
+                diff=DiffInfo(added_lines=10, deleted_lines=5, diff_text="diff"),
+            ),
         )
         # Under-limit trivial → pass (not fail, not warn from cross-check)
         assert verdict.status == "pass", (
@@ -1021,9 +1051,11 @@ class TestJudgeWiring:
             "Theory: separates state tracking to eliminate retry double-count",
             ["src/f.py"],
             cfg,
-            map_components=["Walker"],  # miss → warn
-            judge=None,
-            diff=DiffInfo(diff_text="some diff"),
+            evidence=Evidence(
+                map_components=["Walker"],  # miss → warn
+                judge=None,
+                diff=DiffInfo(diff_text="some diff"),
+            ),
         )
         # MAP miss → warn, but judge absent → only 1 reason
         assert verdict.status == "warn"
@@ -1126,7 +1158,9 @@ class TestEndToEndDiscoveryAndCheck:
             "Theory: trivial - rename",
             ["src/f.py"],
             cfg,
-            diff=DiffInfo(added_lines=8, deleted_lines=8),  # sum=16 > 10
+            evidence=Evidence(
+                diff=DiffInfo(added_lines=8, deleted_lines=8),  # sum=16 > 10
+            ),
         )
         assert verdict.status == "warn", (
             f"Expected warn for sum=16 > trivial_max_lines=10; got {verdict.status!r}"
@@ -1153,9 +1187,11 @@ class TestEndToEndDiscoveryAndCheck:
             valid_msg,
             ["src/f.py"],
             cfg,
-            map_components=["Walker"],
-            judge=fake_judge,
-            diff=DiffInfo(diff_text="some diff text"),
+            evidence=Evidence(
+                map_components=["Walker"],
+                judge=fake_judge,
+                diff=DiffInfo(diff_text="some diff text"),
+            ),
         )
         assert verdict.status == "warn"
         assert len(verdict.reasons) == 2, (

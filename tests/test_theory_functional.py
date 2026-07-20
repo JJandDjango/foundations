@@ -40,6 +40,8 @@ Spec reference: origin-harness spec — slice u (theory_pass1_checker), 2026-06-
 """
 from __future__ import annotations
 
+from theory.checker import Evidence
+
 import os
 import subprocess
 import sys
@@ -280,7 +282,9 @@ class TestCheckPassPaths:
             "Theory: explains the design tradeoff in the walker state machine",
             ["src/foo.py"],
             TheoryConfig(),
-            map_components=["Walker", "Harness"],
+            evidence=Evidence(
+                map_components=["Walker", "Harness"],
+            ),
         )
         assert result.status == "pass"
 
@@ -360,7 +364,9 @@ class TestCheckWarnPaths:
             "Theory: explains the design tradeoff in the state machine",
             ["src/foo.py"],
             TheoryConfig(),
-            map_components=["Walker", "Harness"],
+            evidence=Evidence(
+                map_components=["Walker", "Harness"],
+            ),
         )
         assert result.status == "warn"
 
@@ -371,7 +377,9 @@ class TestCheckWarnPaths:
             "Theory: explains the design tradeoff in the state machine",
             ["src/foo.py"],
             TheoryConfig(),
-            map_components=["Walker", "Harness"],
+            evidence=Evidence(
+                map_components=["Walker", "Harness"],
+            ),
         )
         assert len(result.reasons) >= 1
         assert any("map" in r.lower() or "component" in r.lower() for r in result.reasons)
@@ -383,7 +391,9 @@ class TestCheckWarnPaths:
             "Theory: explains the design tradeoff in the state machine",
             ["src/foo.py"],
             TheoryConfig(),
-            map_components=None,
+            evidence=Evidence(
+                map_components=None,
+            ),
         )
         assert result.status == "pass"
 

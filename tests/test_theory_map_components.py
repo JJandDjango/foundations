@@ -34,6 +34,8 @@ from pathlib import Path
 
 import pytest
 
+from theory.checker import Evidence
+
 # ---------------------------------------------------------------------------
 # Path constants
 # ---------------------------------------------------------------------------
@@ -338,7 +340,9 @@ class TestProductionFixturePassPath:
             "Theory: fixes harness dispatch to eliminate the retry double-count in harness",
             ["src/foo.py"],
             TheoryConfig(),
-            map_components=components,
+            evidence=Evidence(
+                map_components=components,
+            ),
         )
         assert result.status == "pass", (
             f"Expected 'pass' when rationale mentions 'harness' (an MAP component), "
@@ -361,7 +365,9 @@ class TestProductionFixturePassPath:
             "Theory: theory checker now correctly extracts component names from MAP frontmatter",
             ["src/foo.py"],
             TheoryConfig(),
-            map_components=components,
+            evidence=Evidence(
+                map_components=components,
+            ),
         )
         assert result.status == "pass", (
             f"Expected 'pass' for rationale mentioning 'theory'; got {result.status!r}. "
@@ -383,7 +389,9 @@ class TestProductionFixturePassPath:
             "Theory: restructures harness orchestration to fix the retry double-count",
             ["src/foo.py"],
             TheoryConfig(),
-            map_components=components,
+            evidence=Evidence(
+                map_components=components,
+            ),
         )
         assert result.status != "warn", (
             f"Spurious MAP warn detected — the pre-fix dict-repr bug appears to still be present. "
@@ -412,7 +420,9 @@ class TestProductionFixtureWarnPath:
             "Theory: fixes dispatch to eliminate the retry double-count here",
             ["src/foo.py"],
             TheoryConfig(),
-            map_components=components,
+            evidence=Evidence(
+                map_components=components,
+            ),
         )
         assert result.status == "warn", (
             f"Expected 'warn' for rationale naming no MAP component; "
@@ -431,7 +441,9 @@ class TestProductionFixtureWarnPath:
             "Theory: fixes dispatch to eliminate the retry double-count here",
             ["src/foo.py"],
             TheoryConfig(),
-            map_components=components,
+            evidence=Evidence(
+                map_components=components,
+            ),
         )
         assert len(result.reasons) >= 1, (
             f"Warn verdict must carry at least one reason; got reasons={result.reasons!r}"
@@ -449,7 +461,9 @@ class TestProductionFixtureWarnPath:
             "Theory: fixes dispatch to eliminate the retry double-count here",
             ["src/foo.py"],
             TheoryConfig(),
-            map_components=components,
+            evidence=Evidence(
+                map_components=components,
+            ),
         )
         assert any(
             "map" in r.lower() or "component" in r.lower()
@@ -711,7 +725,9 @@ class TestProductionFixtureEndToEnd:
             "Theory: fixes harness dispatch to eliminate the retry double-count in harness",
             ["src/foo.py"],
             TheoryConfig(),
-            map_components=components,
+            evidence=Evidence(
+                map_components=components,
+            ),
         )
         assert isinstance(v_pass, TheoryVerdict)
         assert v_pass.status == "pass", (
@@ -724,7 +740,9 @@ class TestProductionFixtureEndToEnd:
             "Theory: fixes dispatch to eliminate the retry double-count here",
             ["src/foo.py"],
             TheoryConfig(),
-            map_components=components,
+            evidence=Evidence(
+                map_components=components,
+            ),
         )
         assert isinstance(v_warn, TheoryVerdict)
         assert v_warn.status == "warn", (
